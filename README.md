@@ -1,4 +1,5 @@
 Real-Time Chat Application with Microservices
+
 A real-time chat application built using a microservices architecture, deployed on Kubernetes (Minikube) with automated CI/CD using GitHub Actions. Demonstrates core DevOps practices including containerization, orchestration, and automated deployment.
 
 Features
@@ -27,20 +28,22 @@ Prerequisites
 Setup and Running Locally
 Option 1: Run with Docker Compose
 Clone the repository:git clone https://github.com/van49785/chat-app.git
-cd chat-app
+  - cd chat-app
 
-Run all services: docker-compose up --build
+Run all services: 
+  - docker-compose up --build
 
 Access frontend at http://localhost
 Backend health check at http://localhost:3000/health
 
 Option 2: Run with Minikube
 
-Start Minikube: minikube start
+Start Minikube: 
+  - minikube start
 
-
-Deploy to Kubernetes: kubectl apply -f k8s/
-minikube service chat-frontend
+Deploy to Kubernetes: 
+  - kubectl apply -f k8s/
+  - minikube service chat-frontend
 
 Access the frontend via the URL provided by Minikube.
 Test real-time messaging by sending messages in multiple browser tabs.
@@ -61,14 +64,18 @@ Kubernetes manifests (k8s/) use the same image names for consistency
 Verifying Stability
 To confirm the application runs stably on Kubernetes:
 
-Check Deployments: kubectl get deployments
+Check Deployments: 
+  - kubectl get deployments
 
 Ensure READY is 2/2 for chat-backend and chat-frontend.
 
-Check Pods: kubectl get pods
+Check Pods: 
+  - kubectl get pods
 
-Check Services: kubectl get services
-minikube service chat-frontend
+Check Services: 
+  - kubectl get services
+  - minikube service chat-frontend
 
-View Logs: kubectl logs -l app=chat-backend
-kubectl logs -l app=chat-frontend
+View Logs: 
+  - kubectl logs -l app=chat-backend
+  - kubectl logs -l app=chat-frontend
