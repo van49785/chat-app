@@ -6,76 +6,108 @@ const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
+
+// Cấu hình Redis để kết nối với container Redis
+const redisHost = process.env.REDIS_HOST || 'localhost';
+const redisPort = process.env.REDIS_PORT || 6379;
+const redis = new Redis({
+  host: redisHost,
+  port: redisPort,
+  retryStrategy: (times) => {
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  }
+});
+
+// Cấu hình CORS và Socket.IO
+app.use(cors());
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"],
+    origin: process.env.CORS_ORIGIN || "*",
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
-const redis = new Redis();
 
-app.get('/health', (req, res) => res.send('OK'));
-app.use(cors());
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.send('OK');
+});
 
+// Xử lý kết nối Socket.IO
 io.on('connection', async (socket) => {
   console.log('New client connected with ID:', socket.id);
   
-  // Gửi tất cả tin nhắn đã lưu từ Redis cho client mới kết nối
   try {
+    // Gửi lịch sử tin nhắn cho client mới kết nối
     const storedMessages = await redis.lrange('messages', 0, -1);
     console.log('Retrieved messages from Redis:', storedMessages.length);
+    
     const parsedMessages = storedMessages.map(msg => {
       try {
         return JSON.parse(msg);
       } catch (e) {
-        console.error('Error parsing message:', msg, e);
+        console.error('Error parsing message:', e);
         return null;
       }
-    }).filter(Boolean).reverse(); // đảo lại cho đúng thứ tự
+    }).filter(Boolean).reverse(); // Đảo lại cho đúng thứ tự
     
-    console.log('Sending chat history to client:', parsedMessages);
+    console.log('Sending chat history to client');
     socket.emit('chat history', parsedMessages);
   } catch (err) {
     console.error('Error retrieving chat history:', err);
   }
-
-  // Lắng nghe và xử lý tin nhắn mới
+  
+  // Lắng nghe tin nhắn mới
   socket.on('chat message', async (msg) => {
     console.log('Received message:', msg);
+    
     try {
-      const result = await redis.lpush('messages', JSON.stringify(msg));
-      console.log('LPUSH result:', result); // result là số lượng phần tử trong list sau khi push
+      // Lưu tin nhắn vào Redis
+      await redis.lpush('messages', JSON.stringify(msg));
+      
+      // Phát sóng tin nhắn tới tất cả client
+      io.emit('chat message', msg);
     } catch (error) {
-      console.error('Redis LPUSH error:', error);
+      console.error('Error handling message:', error);
     }
-    io.emit('chat message', msg);
+  });
+  
+  // Lắng nghe sự kiện disconnect
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
   });
 });
 
+// Khởi tạo dữ liệu mẫu khi server starts
 (async () => {
   try {
-    await redis.del('messages'); // Xóa hết tin nhắn cũ
-    const testMessage = {
+    // Kiểm tra kết nối Redis
+    await redis.ping();
+    console.log('Successfully connected to Redis');
+    
+    // Thêm tin nhắn chào mừng
+    const welcomeMessage = {
       text: 'Chào mừng bạn đến với ứng dụng chat!', 
       timestamp: new Date().toISOString(),
       sender: 'system'
     };
-    console.log('Adding test message:', testMessage);
-    await redis.lpush('messages', JSON.stringify(testMessage));
-    const messages = await redis.lrange('messages', 0, -1);
-    console.log('Test messages from Redis:', messages);
     
-    // Kiểm tra xem có thể parse được không
-    try {
-      const parsed = JSON.parse(messages[0]);
-      console.log('Parsed test message:', parsed);
-    } catch (err) {
-      console.error('Error parsing test message:', err);
+    // Đếm số lượng tin nhắn hiện có
+    const existingMessages = await redis.llen('messages');
+    
+    // Chỉ thêm tin nhắn chào mừng nếu không có tin nhắn nào
+    if (existingMessages === 0) {
+      console.log('Adding welcome message');
+      await redis.lpush('messages', JSON.stringify(welcomeMessage));
+    } else {
+      console.log(`Found ${existingMessages} existing messages in Redis`);
     }
   } catch (err) {
-    console.error('Error in initialization:', err);
+    console.error('Redis initialization error:', err);
   }
 })();
 
-server.listen(3000, () => console.log('Backend running on port 3000'));
+// Khởi động server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

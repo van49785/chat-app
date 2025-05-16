@@ -1,18 +1,36 @@
 version: "3.8"
 services:
   redis:
-    image: redis:7.0
+    image: redis:alpine
+    restart: always
     ports:
       - "6379:6379"
+    networks:
+      - chat-network
   backend:
     build: ./backend
+    image: ${DOCKERHUB_USERNAME}/my-chat-backend:latest
+    restart: always
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3000
     ports:
-      - "8000:8000"
+      - "8000:3000"
     depends_on:
       - redis
+    networks:
+      - chat-network
 
   frontend:
-    build: ./frontend
+    build: ./frontend/my-chat-app
+    image: ${DOCKERHUB_USERNAME}/my-chat-frontend:latest
     ports:
       - "80:80"
-
+    depends_on:
+      - backend
+    networks:
+      - chat-network
+networks:
+  chat-network:
+    driver: bridge
