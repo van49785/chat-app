@@ -34,6 +34,7 @@ Run all services:
   - docker-compose up --build
 
 Access frontend at http://localhost
+
 Backend health check at http://localhost:3000/health
 
 Option 2: Run with Minikube
@@ -59,6 +60,7 @@ Store DOCKER_USERNAME and DOCKER_PASSWORD in GitHub Secrets
 
 Docker Hub Notes:
 Images are pushed as thaovan01320/chat-app-backend:latest 
+
 Kubernetes manifests (k8s/) use the same image names for consistency
 
 Verifying Stability
