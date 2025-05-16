@@ -26,6 +26,7 @@ Prerequisites
   - Docker Hub account
 
 Setup and Running Locally
+
 Option 1: Run with Docker Compose
 Clone the repository:git clone https://github.com/van49785/chat-app.git
   - cd chat-app
